@@ -3,6 +3,7 @@
 
 #include <unistd.h>
 #include <stdlib.h>
+#include <setjmp.h>
 #include <sys/uio.h>
 #include <sys/socket.h>
 #include <linux/netlink.h>
@@ -43,6 +44,10 @@ struct pevent *create_pevent(void);
 
 #define FREE_PEVENT(ev)   \
     if (ev != NULL) free(ev);     \
+
+jmp_buf jmp_addr;
+
+void pevent_cleanup(int signal_number);
 
 void pevent_connect(struct pevent *ev);
 

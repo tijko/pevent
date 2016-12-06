@@ -1,9 +1,17 @@
 #include <poll.h>
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
 
 #include "pevent.h"
 
+
+void pevent_cleanup(int signal_number)
+{
+    printf("Pevent received SIGINT <%d>\n", signal_number);
+    longjmp(jmp_addr, 1);
+}
 
 void init_connection(struct pevent *ev)
 {   
@@ -178,8 +186,6 @@ void pevent_listen(struct pevent *ev)
      * CPU (in proc_event)
      * timestamp (same as above)
      *
-     * Check for error in proc_event.ack
-     *
      */
 
     while ( 1 ) {
@@ -190,8 +196,13 @@ void pevent_listen(struct pevent *ev)
         if (recvmsg(ev->conn, &(ev->msg), 0) < 0)
            PEVENT_ERROR("pevent-listen-recvmsg");
 
-        parse_pevent((struct proc_event *) 
-                    ((char *) &(ev->nl_pevent_msg.cn.data)));
+        struct proc_event *event = (struct proc_event *) 
+                                   ((char *) &(ev->nl_pevent_msg.cn.data));
+
+        if (event->event_data.ack.err == 22)
+            continue;
+
+        parse_pevent(event); 
     }
 
     return;
@@ -211,9 +222,13 @@ struct pevent *create_pevent(void)
 
 int main(int argc, char *argv[])
 {
+    struct sigaction sa = { .sa_handler=pevent_cleanup };
+    sigaction(SIGINT, &sa, NULL);
+
     struct pevent *ev = create_pevent();
     
-    pevent_listen(ev);
+    if (!setjmp(jmp_addr))
+        pevent_listen(ev);
 
     FREE_PEVENT(ev);
 
