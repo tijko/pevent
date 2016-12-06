@@ -1,8 +1,8 @@
 CC = gcc
-CFLAGS = -g -Wall
+CFLAGS = -g -Wall -Wextra -pedantic
 
-default:
-	$(CC) pevent.c -o pevent $(CFLAGS)
+pevent:*.c
+	$(CC) $^ -o $@ $(CFLAGS)
 
 clean:
 	rm pevent
