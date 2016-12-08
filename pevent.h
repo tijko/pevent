@@ -25,7 +25,7 @@ struct pevent_nlmsg {
     char *cn_data[CN_MAX_DATA];
 };
 
-#define PEVENT_NLMSG_SIZE(load) NLMSG_LENGTH(sizeof(load)) +      \
+#define PEVENT_NLMSG_SIZE(load) NLMSG_LENGTH(sizeof(load)) +     \
                                              sizeof(struct cn_msg)
 
 struct pevent {
@@ -42,8 +42,8 @@ void init_connection(struct pevent *ev);
 
 struct pevent *create_pevent(void);
 
-#define FREE_PEVENT(ev)   \
-    if (ev != NULL) free(ev);     \
+#define FREE_PEVENT(ev)       \
+    if (ev != NULL) free(ev); \
 
 jmp_buf jmp_addr;
 
@@ -51,7 +51,7 @@ void pevent_cleanup(int signal_number);
 
 void pevent_connect(struct pevent *ev);
 
-void pevent_listen(struct pevent *ev);
+void pevent_listen(struct pevent *ev, int event_id, int events);
 
 void parse_pevent(struct proc_event *cn_event);
 

@@ -170,17 +170,14 @@ void parse_pevent(struct proc_event *cn_event)
     }
 }
 
-void pevent_listen(struct pevent *ev)
+void pevent_listen(struct pevent *ev, int event_id, int events)
 {
     struct pollfd polls[] = {{ .fd=ev->conn, .events=POLLIN }};
     ev->io.iov_len = PEVENT_NLMSG_SIZE(struct proc_event);
 
     /* 
-     * options
      * 
-     * How many messages to recv
      * Callback for specific messages
-     * Only report specific messages
      * Timeouts
      * 
      * CPU (in proc_event)
@@ -188,7 +185,10 @@ void pevent_listen(struct pevent *ev)
      *
      */
 
-    while ( 1 ) {
+    int event_count = 0;
+    int inc = events ? 1 : 0;
+
+    while (event_count <= events) {
 
         if (poll(polls, 1, -1) < 0)
             continue;
@@ -199,9 +199,11 @@ void pevent_listen(struct pevent *ev)
         struct proc_event *event = (struct proc_event *) 
                                    ((char *) &(ev->nl_pevent_msg.cn.data));
 
-        if (event->event_data.ack.err == 22)
+        if (event->event_data.ack.err == 22 ||
+           (event_id && event->what != event_id))
             continue;
 
+        event_count += inc;
         parse_pevent(event); 
     }
 
@@ -220,15 +222,53 @@ struct pevent *create_pevent(void)
     return ev;
 }
 
+int match_id(char *event_name)
+{
+    const char *events[] = { "fork", "exec", "uid", "gid", "uid", "sid",
+                             "ptrace", "comm", "coredump", "exit" };
+
+    int event_ids[] = { PROC_EVENT_FORK, PROC_EVENT_EXEC,
+                        PROC_EVENT_UID, PROC_EVENT_GID,
+                        PROC_EVENT_SID, PROC_EVENT_PTRACE,
+                        PROC_EVENT_COMM, PROC_EVENT_COREDUMP,
+                        PROC_EVENT_EXIT };
+
+    int event_number = 10;
+
+    for (int i=0; i < event_number; i++)
+        if (!strcmp(event_name, events[i]))
+            return event_ids[i];
+
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
+    int opt;
+    signed int event_id = 0;
+    int events = 0;
+
+    while ((opt = getopt(argc, argv, "e:c:")) != -1) {
+
+        switch (opt) {
+
+            case ('e'):
+                event_id = match_id(optarg);
+                break;
+
+            case ('c'):
+                events = atoi(optarg);
+                break;
+        }
+    }
+
     struct sigaction sa = { .sa_handler=pevent_cleanup };
     sigaction(SIGINT, &sa, NULL);
 
     struct pevent *ev = create_pevent();
     
     if (!setjmp(jmp_addr))
-        pevent_listen(ev);
+        pevent_listen(ev, event_id, events);
 
     FREE_PEVENT(ev);
 
