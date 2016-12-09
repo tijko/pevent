@@ -41,7 +41,8 @@ void pevent_connect(struct pevent *ev)
     ev->nl_pevent_msg.cn.id.val = CN_VAL_PROC;
     ev->nl_pevent_msg.cn.len = sizeof(PROC_CN_MCAST_LISTEN);
     int cn_data = PROC_CN_MCAST_LISTEN;
-    memcpy(&(ev->nl_pevent_msg.cn_data), &cn_data, sizeof(enum proc_cn_mcast_op));
+    memcpy(&(ev->nl_pevent_msg.cn_data), &cn_data,
+             sizeof(enum proc_cn_mcast_op));
     ev->io.iov_base = &(ev->nl_pevent_msg);
     ev->io.iov_len = nlh->nlmsg_len; 
     ev->msg.msg_iov = &(ev->io);
@@ -168,9 +169,10 @@ void parse_pevent(struct proc_event *cn_event)
         default:
             break;
     }
+
 }
 
-void pevent_listen(struct pevent *ev, int event_id, int events)
+void pevent_listen(struct pevent *ev, long event_id, int events)
 {
     struct pollfd polls[] = {{ .fd=ev->conn, .events=POLLIN }};
     ev->io.iov_len = PEVENT_NLMSG_SIZE(struct proc_event);
@@ -180,9 +182,6 @@ void pevent_listen(struct pevent *ev, int event_id, int events)
      * Callback for specific messages
      * Timeouts
      * 
-     * CPU (in proc_event)
-     * timestamp (same as above)
-     *
      */
 
     int event_count = 0;
@@ -205,6 +204,7 @@ void pevent_listen(struct pevent *ev, int event_id, int events)
 
         event_count += inc;
         parse_pevent(event); 
+        printf("CPU <%d>\n", event->cpu);
     }
 
     return;
@@ -222,16 +222,16 @@ struct pevent *create_pevent(void)
     return ev;
 }
 
-int match_id(char *event_name)
+static long match_id(char *event_name)
 {
     const char *events[] = { "fork", "exec", "uid", "gid", "uid", "sid",
                              "ptrace", "comm", "coredump", "exit" };
 
-    int event_ids[] = { PROC_EVENT_FORK, PROC_EVENT_EXEC,
-                        PROC_EVENT_UID, PROC_EVENT_GID,
-                        PROC_EVENT_SID, PROC_EVENT_PTRACE,
-                        PROC_EVENT_COMM, PROC_EVENT_COREDUMP,
-                        PROC_EVENT_EXIT };
+    long event_ids[] = { PROC_EVENT_FORK, PROC_EVENT_EXEC,
+                         PROC_EVENT_UID, PROC_EVENT_GID,
+                         PROC_EVENT_SID, PROC_EVENT_PTRACE,
+                         PROC_EVENT_COMM, PROC_EVENT_COREDUMP,
+                         PROC_EVENT_EXIT };
 
     int event_number = 10;
 
@@ -245,7 +245,7 @@ int match_id(char *event_name)
 int main(int argc, char *argv[])
 {
     int opt;
-    signed int event_id = 0;
+    long event_id = 0;
     int events = 0;
 
     while ((opt = getopt(argc, argv, "e:c:")) != -1) {

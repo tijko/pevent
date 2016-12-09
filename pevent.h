@@ -51,7 +51,7 @@ void pevent_cleanup(int signal_number);
 
 void pevent_connect(struct pevent *ev);
 
-void pevent_listen(struct pevent *ev, int event_id, int events);
+void pevent_listen(struct pevent *ev, long event_id, int events);
 
 void parse_pevent(struct proc_event *cn_event);
 
