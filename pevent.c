@@ -1,8 +1,10 @@
 #include <poll.h>
+#include <time.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
+#include <sys/sysinfo.h>
 
 #include "pevent.h"
 
@@ -133,59 +135,65 @@ void parse_pevent(struct proc_event *cn_event)
 
         case (PROC_EVENT_NONE):
             break;
+
         case (PROC_EVENT_FORK):
             print_fork((struct fork_proc_event *) 
                       ((char *) &(cn_event->event_data)));
             break;
+
         case (PROC_EVENT_EXEC):
             print_exec((struct exec_proc_event *) 
                       ((char *) &(cn_event->event_data)));
             break;
+
         case (PROC_EVENT_UID):
         case (PROC_EVENT_GID):
             print_id((struct id_proc_event *)
                     ((char *) &(cn_event->event_data)), cn_event->what);
             break;
+
         case (PROC_EVENT_SID):
             print_sid((struct sid_proc_event *)
                      ((char *) &(cn_event->event_data)));
             break;
+
         case (PROC_EVENT_PTRACE):
             print_ptrace((struct ptrace_proc_event *)
                         ((char *) &(cn_event->event_data)));
             break;
+
         case (PROC_EVENT_COMM):
             print_comm((struct comm_proc_event *)
                       ((char *) &(cn_event->event_data)));
             break;
+
         case (PROC_EVENT_COREDUMP):
             print_coredump((struct coredump_proc_event *)
                           ((char *) &(cn_event->event_data)));
             break;
+
         case (PROC_EVENT_EXIT):
             print_exit((struct exit_proc_event *)
                       ((char *) &(cn_event->event_data)));
             break;
+
         default:
             break;
     }
 
 }
 
-void pevent_listen(struct pevent *ev, long event_id, int events)
+void pevent_listen(struct pevent *ev, long event_id, int events, long timeout)
 {
     struct pollfd polls[] = {{ .fd=ev->conn, .events=POLLIN }};
     ev->io.iov_len = PEVENT_NLMSG_SIZE(struct proc_event);
 
-    /* 
-     * 
-     * Callback for specific messages
-     * Timeouts
-     * 
-     */
-
+    /* Callback for specific messages */
+    
     int event_count = 0;
     int inc = events ? 1 : 0;
+
+    time_t start = time(NULL);
 
     while (event_count <= events) {
 
@@ -198,16 +206,16 @@ void pevent_listen(struct pevent *ev, long event_id, int events)
         struct proc_event *event = (struct proc_event *) 
                                    ((char *) &(ev->nl_pevent_msg.cn.data));
 
+        if (timeout && (time(NULL) - start) > timeout)
+            break;
+
         if (event->event_data.ack.err == 22 ||
            (event_id && event->what != event_id))
             continue;
 
         event_count += inc;
         parse_pevent(event); 
-        printf("CPU <%d>\n", event->cpu);
     }
-
-    return;
 }
 
 struct pevent *create_pevent(void)
@@ -246,9 +254,10 @@ int main(int argc, char *argv[])
 {
     int opt;
     long event_id = 0;
+    long timeout = 0;
     int events = 0;
 
-    while ((opt = getopt(argc, argv, "e:c:")) != -1) {
+    while ((opt = getopt(argc, argv, "e:c:t:")) != -1) {
 
         switch (opt) {
 
@@ -259,6 +268,10 @@ int main(int argc, char *argv[])
             case ('c'):
                 events = atoi(optarg);
                 break;
+
+            case ('t'):
+                timeout = atol(optarg);
+                break;
         }
     }
 
@@ -268,7 +281,7 @@ int main(int argc, char *argv[])
     struct pevent *ev = create_pevent();
     
     if (!setjmp(jmp_addr))
-        pevent_listen(ev, event_id, events);
+        pevent_listen(ev, event_id, events, timeout);
 
     FREE_PEVENT(ev);
 

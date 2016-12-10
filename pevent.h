@@ -22,7 +22,7 @@
 struct pevent_nlmsg {
     struct nlmsghdr nl_pevent_hdr;
     struct cn_msg cn;
-    char *cn_data[CN_MAX_DATA];
+    char cn_data[CN_MAX_DATA];
 };
 
 #define PEVENT_NLMSG_SIZE(load) NLMSG_LENGTH(sizeof(load)) +     \
@@ -51,7 +51,7 @@ void pevent_cleanup(int signal_number);
 
 void pevent_connect(struct pevent *ev);
 
-void pevent_listen(struct pevent *ev, long event_id, int events);
+void pevent_listen(struct pevent *ev, long event_id, int events, long timeout);
 
 void parse_pevent(struct proc_event *cn_event);
 
