@@ -29,8 +29,6 @@ void init_connection(struct pevent *ev)
         PEVENT_ERROR("init-connection-bind");
 
     pevent_connect(ev);
-
-    return;
 }
 
 void pevent_connect(struct pevent *ev)
@@ -53,8 +51,6 @@ void pevent_connect(struct pevent *ev)
 
     if (sendmsg(ev->conn, &(ev->msg), 0) < 0)
         PEVENT_ERROR("pevent-connect-sendmsg");
-
-    return;
 }
 
 void print_fork(struct fork_proc_event *fork_event)
