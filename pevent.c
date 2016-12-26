@@ -201,6 +201,12 @@ void pevent_listen(struct pevent *ev, long event_id, int events, long timeout)
         struct proc_event *event = (struct proc_event *) 
                                    ((char *) &(ev->nl_pevent_msg.cn.data));
 
+        struct timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+        time_t timestamp = (time_t) (ts.tv_sec + (ts.tv_nsec / NANO_SEC));
+        char *event_time = ctime(&timestamp);
+        printf("\nTimestamp: %s\n", event_time);
+
         if (timeout && (time(NULL) - start) > timeout)
             break;
 
@@ -236,7 +242,7 @@ static long match_id(char *event_name)
                          PROC_EVENT_COMM, PROC_EVENT_COREDUMP,
                          PROC_EVENT_EXIT };
 
-    int event_number = 10;
+    const int event_number = 10;
 
     for (int i=0; i < event_number; i++)
         if (!strcmp(event_name, events[i]))

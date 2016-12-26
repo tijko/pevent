@@ -36,6 +36,8 @@ struct pevent {
     int conn;
 };
 
+#define NANO_SEC 1000000000L
+
 #define NL_ADDR_SIZE sizeof(struct sockaddr_nl)
 
 void init_connection(struct pevent *ev);
